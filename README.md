@@ -1,24 +1,26 @@
 # 🗑️ Bin Collection Reminder Agent
 
-Automated weekly reminder for bin collection at **207 Markfield Road, Groby, Leicester LE6 0FT**.
+Automated weekly reminder + interactive bot for bin collection at **207 Markfield Road, Groby, Leicester LE6 0FT**.
 
-Runs every **Sunday at 19:00** and sends a beautiful reminder image showing which bins to put out the next morning.
+## Two agents
 
-## What it sends
-
-A professionally designed reminder card showing:
-- The collection date (tomorrow's Monday)
-- Which bins go out (with colour-coded bin graphics)
-- Friendly message + collection time (7am)
-
-## Channels
+### 1. Weekly Reminder (`bin-collection-reminder`)
+Runs every **Sunday at 19:00**. Sends a beautiful image card showing which bins to put out tomorrow.
 
 | Channel | Recipient |
 |---------|-----------|
 | 📱 Telegram | Personal chat via @ScopeFinderSEO_bot |
-| 💬 WhatsApp | Cezary (self) |
-| 💬 WhatsApp | Sunia |
+| 💬 WhatsApp | Cezary (self) via Green API |
+| 💬 WhatsApp | Sunia via Green API |
 | 📧 Email | Sunia (mantra.agni@gmail.com) |
+
+### 2. Interactive Bot (`bin-bot-responder`)
+Runs every **5 minutes**. Polls for incoming messages on Telegram and WhatsApp. Reply to any bin-related question and get the schedule instantly.
+
+**Just message the bot:**
+> "Which bins this week?"  
+> "When is next collection?"  
+> "What goes out Monday?"
 
 ## Bin schedule (HBBC — confirmed April 2026)
 
@@ -30,31 +32,24 @@ Collection day: **Monday**
 | **Week B** (fortnightly) | 🪣 Food waste caddy + 🟤 Brown garden bin + ♻️ Blue recycling bin |
 
 Food waste caddy goes out **every week**.  
-Base anchor: **Monday 27 April 2026 = Week A**
+Anchor: **Monday 27 April 2026 = Week A**
 
-## Config
+## Config (`telegram_config.json`)
 
-Credentials and settings in `telegram_config.json`:
-- Telegram bot token + chat ID
-- Address
-- Sunia's email and WhatsApp name
-
-## How it works
-
-1. Calculates Week A or B from the anchor date
-2. Renders a beautiful HTML card with bin graphics
-3. Captures it as PNG using `html2canvas`
-4. Sends via Telegram `sendPhoto` API (from browser — bash proxy blocks Telegram)
-5. Attaches and sends via WhatsApp Web automation (Chrome MCP)
-6. Emails Sunia via Gmail MCP
+| Key | Description |
+|-----|-------------|
+| `bot_token` | Telegram bot token |
+| `chat_id` | Telegram personal chat ID |
+| `green_api_instance` | Green API WhatsApp instance ID |
+| `green_api_token` | Green API token |
+| `green_api_url` | Green API base URL |
+| `sunia_email` | Sunia's email for weekly reminder |
 
 ## Stack
-
-- **Scheduler:** Cowork scheduled tasks (Claude agent, `bin-collection-reminder`)
+- **Scheduler:** Cowork scheduled tasks (Claude agent)
 - **Browser automation:** Claude in Chrome MCP
+- **WhatsApp:** Green API (instance 7107598382)
+- **Telegram:** @ScopeFinderSEO_bot
 - **Email:** Gmail MCP
-- **Telegram:** Bot API via browser fetch
 
-## Powered by
-
-Claude (Anthropic) — Cowork mode
+## Powered by Claude (Anthropic) — Cowork mode
