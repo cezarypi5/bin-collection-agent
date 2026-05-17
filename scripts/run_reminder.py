@@ -152,10 +152,13 @@ def send_whatsapp(info, png_path):
     if not (instance and token and url):
         return {"_skipped": "Green API env vars not set"}
 
-    # Pre-flight: verify authorized
-    state = requests.get(f"{url}/waInstance{instance}/getStateInstance/{token}", timeout=15).json()
-    if state.get("stateInstance") != "authorized":
-        return {"_skipped": f"Green API state: {state}"}
+    # Note: getStateInstance lies — returns notAuthorized even when sending works.
+    # Trust the actual send response instead. We do a fast log of state for debugging.
+    try:
+        state = requests.get(f"{url}/waInstance{instance}/getStateInstance/{token}", timeout=15).json()
+        print(f"Green API state (informational only): {state}")
+    except Exception:
+        pass
 
     recipients = [env("WHATSAPP_CHATID_CEZARY", required=False), env("WHATSAPP_CHATID_SUNIA", required=False)]
     recipients = [r for r in recipients if r and "XXXXXXXXX" not in r]
