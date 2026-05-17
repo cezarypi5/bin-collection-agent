@@ -1,14 +1,16 @@
-# 🗑️ Bin Collection Reminder — v2.1
+# 🗑️ Bin Collection Reminder — v2.2
 
 Automated weekly bin collection reminder for **207 Markfield Road, Groby, Leicester LE6 0FT**.
 
 Runs as a **GitHub Actions workflow** every Sunday at 19:30 Europe/London. Sends to:
 
-| Channel | Recipients | Mechanism |
-|---|---|---|
-| 📱 Telegram | Cezary | `api.telegram.org/sendPhoto` |
-| 📧 Email | Cezary + Sunia | Gmail SMTP via App Password |
-| 💬 WhatsApp | Cezary + Sunia | Green API REST |
+| Channel | Recipients | Mechanism | Where it runs |
+|---|---|---|---|
+| 📱 Telegram | Cezary | `api.telegram.org/sendPhoto` | GitHub Actions |
+| 📧 Email | Cezary + Sunia | Gmail SMTP via App Password | GitHub Actions |
+| 💬 WhatsApp | Cezary + Sunia | Chrome MCP + WhatsApp Web | Cowork scheduled task (laptop) |
+
+WhatsApp moved to a Cowork scheduled task at Sun 19:35 BST (5 min after the GH Actions fire) because every headless WhatsApp API (Green API, CallMeBot, etc.) has been blocked by WhatsApp's multi-device clampdown. Chrome MCP driving real WhatsApp Web in your browser is the only path that still works reliably. When your laptop is on with Cowork running, WhatsApp fires. When the laptop is off, you and Sunia still get Telegram + email.
 
 If any delivery fails, the workflow Telegram-pings Cezary with the error (canary channel).
 
@@ -89,6 +91,11 @@ Either:
 - Reproducible — anyone can clone, set secrets, and run their own copy
 
 ## Changelog
+
+### v2.2 — 2026-05-17 (hybrid architecture)
+- 🐛 **WhatsApp delivery moved off GitHub Actions** — Green API was returning fake `idMessage` OK responses while silently dropping messages (`lastOutgoingMessages` was empty, `getMessage` returned "not found", `wid`/`phone`/`chatId` all empty). WhatsApp has progressively blocked every free third-party multi-device API.
+- 🛠 **Hybrid model:** GH Actions does Telegram + Email (rock solid); Cowork scheduled task drives Chrome MCP + WhatsApp Web for WhatsApp delivery (cron `35 19 * * 0` Europe/London).
+- 🧹 Removed `send_whatsapp()` from `run_reminder.py` and all Green API / WhatsApp env vars from the workflow YAML. The 4 unused secrets (`GREEN_API_*`, `WHATSAPP_CHATID_*`) can be deleted from the repo's secret store later if desired.
 
 ### v2.1 — 2026-05-17 (GitHub Actions migration)
 - 🚀 Migrated from Cowork scheduled tasks to GitHub Actions workflow

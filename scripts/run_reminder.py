@@ -145,49 +145,6 @@ def send_emails(info, html_path, png_path):
             results[to] = f"FAIL: {e}"
     return results
 
-def send_whatsapp(info, png_path):
-    instance = env("GREEN_API_INSTANCE", required=False)
-    token = env("GREEN_API_TOKEN", required=False)
-    url = env("GREEN_API_URL", required=False)
-    if not (instance and token and url):
-        return {"_skipped": "Green API env vars not set"}
-
-    # Note: getStateInstance lies — returns notAuthorized even when sending works.
-    # Trust the actual send response instead. We do a fast log of state for debugging.
-    try:
-        state = requests.get(f"{url}/waInstance{instance}/getStateInstance/{token}", timeout=15).json()
-        print(f"Green API state (informational only): {state}")
-    except Exception:
-        pass
-
-    recipients = [env("WHATSAPP_CHATID_CEZARY", required=False), env("WHATSAPP_CHATID_SUNIA", required=False)]
-    recipients = [r for r in recipients if r and "XXXXXXXXX" not in r]
-    if not recipients:
-        return {"_skipped": "No WhatsApp recipients configured"}
-
-    caption = f"🗑️ Bin reminder — {info['human_date']} (Week {info['week']})\n"
-    caption += "\n".join(f"• {b}" for b in info["bins"])
-    if info["note"]:
-        caption += f"\n\n⚠️ {info['note']}"
-    caption += "\n📍 207 Markfield Rd, Groby LE6 0FT"
-
-    results = {}
-    with open(png_path, "rb") as fh:
-        png_bytes = fh.read()
-    for chatId in recipients:
-        try:
-            with open(png_path, "rb") as fh:
-                r = requests.post(
-                    f"{url}/waInstance{instance}/sendFileByUpload/{token}",
-                    data={"chatId": chatId, "caption": caption},
-                    files={"file": ("bin_reminder.png", fh, "image/png")},
-                    timeout=30,
-                )
-            r.raise_for_status()
-            results[chatId] = "OK"
-        except Exception as e:
-            results[chatId] = f"FAIL: {e}"
-    return results
 
 # --- 4. Main ---
 def main():
@@ -205,7 +162,6 @@ def main():
     except Exception as e:
         results["telegram"] = f"FAIL: {e}"
     results["email"] = send_emails(info, html_path, png_path)
-    results["whatsapp"] = send_whatsapp(info, png_path)
 
     print("\n=== Results ===")
     print(json.dumps(results, indent=2))
@@ -217,12 +173,6 @@ def main():
     for k, v in results["email"].items():
         if v != "OK":
             failed.append(f"Email→{k}: {v}")
-    if isinstance(results["whatsapp"], dict):
-        for k, v in results["whatsapp"].items():
-            if v != "OK" and not k.startswith("_"):
-                failed.append(f"WhatsApp→{k}: {v}")
-            elif k.startswith("_"):
-                failed.append(f"WhatsApp {k}: {v}")
 
     if failed:
         try:

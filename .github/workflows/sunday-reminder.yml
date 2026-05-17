@@ -59,11 +59,6 @@ jobs:
           GMAIL_APP_PASSWORD:    ${{ secrets.GMAIL_APP_PASSWORD }}
           EMAIL_CEZARY:          ${{ secrets.EMAIL_CEZARY }}
           EMAIL_SUNIA:           ${{ secrets.EMAIL_SUNIA }}
-          GREEN_API_INSTANCE:    ${{ secrets.GREEN_API_INSTANCE }}
-          GREEN_API_TOKEN:       ${{ secrets.GREEN_API_TOKEN }}
-          GREEN_API_URL:         ${{ secrets.GREEN_API_URL }}
-          WHATSAPP_CHATID_CEZARY: ${{ secrets.WHATSAPP_CHATID_CEZARY }}
-          WHATSAPP_CHATID_SUNIA:  ${{ secrets.WHATSAPP_CHATID_SUNIA }}
         run: python scripts/run_reminder.py
 
       - name: Upload reminder image artifact
