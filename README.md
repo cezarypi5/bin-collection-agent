@@ -1,4 +1,4 @@
-# 🗑️ Bin Collection Reminder — v2.3
+# 🗑️ Bin Collection Reminder — v2.4
 
 Automated weekly bin collection reminder for **207 Markfield Road, Groby, Leicester LE6 0FT**.
 
@@ -70,6 +70,10 @@ Either:
 - CLI: `gh workflow run sunday-reminder.yml -f force=true`
 
 ## Changelog
+
+### v2.4 — 2026-05-17 (dedicated bot)
+- 🤖 Switched Telegram delivery from `@ScopeFinderSEO_bot` (Cezary's SEO bot — wrong purpose) to dedicated `@GrobyBinbot` (id 8912420562)
+- 🔒 `TELEGRAM_BOT_TOKEN` GitHub secret rotated to the new bot's token
 
 ### v2.3 — 2026-05-17 (drop WhatsApp; pure Telegram + Email)
 - 🧹 Removed all WhatsApp delivery code — Meta has blocked every free third-party multi-device API (Green API, CallMeBot, etc.)
