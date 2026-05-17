@@ -1,0 +1,35 @@
+name: Delayed Telegram Message
+
+on:
+  workflow_dispatch:
+    inputs:
+      delay_seconds:
+        description: 'How long to wait before sending (seconds)'
+        required: true
+        default: '381'
+      message:
+        description: 'Message text (HTML supported)'
+        required: true
+        default: '🧪 Test delayed message'
+
+jobs:
+  send:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Wait then send
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID:   ${{ secrets.TELEGRAM_CHAT_ID }}
+          DELAY:   ${{ github.event.inputs.delay_seconds }}
+          MESSAGE: ${{ github.event.inputs.message }}
+        run: |
+          echo "Waiting ${DELAY}s before sending..."
+          echo "Now: $(TZ=Europe/London date '+%H:%M:%S %Z')"
+          echo "Target: $(TZ=Europe/London date -d "+${DELAY} seconds" '+%H:%M:%S %Z')"
+          sleep "$DELAY"
+          echo "Sending now: $(TZ=Europe/London date '+%H:%M:%S %Z')"
+          curl -s -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
+            --data-urlencode "chat_id=${TELEGRAM_CHAT_ID}" \
+            --data-urlencode "text=${MESSAGE}" \
+            --data-urlencode "parse_mode=HTML"
