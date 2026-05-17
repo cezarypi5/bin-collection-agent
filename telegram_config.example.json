@@ -3,7 +3,7 @@
 
   "bot_token": "REPLACE_WITH_TELEGRAM_BOT_TOKEN",
   "chat_id": "REPLACE_WITH_TELEGRAM_PERSONAL_CHAT_ID",
-  "bot_name": "@ScopeFinderSEO_bot",
+  "bot_name": "@GrobyBinbot",
 
   "address": "207 Markfield Road, Groby, Leicester, LE6 0FT",
   "timezone": "Europe/London",
