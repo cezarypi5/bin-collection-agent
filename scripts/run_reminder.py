@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Orchestrator — computes schedule, renders image, fires all 5 destinations."""
+import argparse
 import asyncio
 import json
 import os
@@ -57,6 +58,49 @@ HTML_TEMPLATE = """<html><body style="margin:0;font-family:'Segoe UI',Arial,sans
   <div style="background:#fafafa;padding:14px 28px;font-size:12px;color:#888;border-top:1px solid #eee">Hinckley & Bosworth · bin-reminder-bot v2.0</div>
 </div></body></html>"""
 
+HTML_TEMPLATE_CYBERPUNK = """<html><head>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{background:#05050a;font-family:'Share Tech Mono',monospace;color:#e8e8f0;padding:0;margin:0}
+  .card{position:relative;max-width:560px;margin:24px auto;background:#0a0a14;border:1px solid #ff2079;box-shadow:0 0 32px rgba(255,32,121,.4),inset 0 0 24px rgba(0,255,255,.06);clip-path:polygon(0 0,100% 0,100% calc(100% - 18px),calc(100% - 18px) 100%,0 100%);overflow:hidden}
+  .scanlines{position:absolute;inset:0;pointer-events:none;background:repeating-linear-gradient(0deg,rgba(255,255,255,.03) 0,rgba(255,255,255,.03) 1px,transparent 1px,transparent 3px)}
+  .hero{padding:22px 26px 24px;background:linear-gradient(180deg,#0a0a14 0%,#16001a 100%);border-bottom:1px solid #ff2079}
+  .alert{display:inline-block;padding:4px 10px;background:#ff2079;color:#0a0a14;font-family:'Orbitron',sans-serif;font-weight:900;font-size:11px;letter-spacing:3px;text-transform:uppercase;margin-bottom:14px}
+  .title{font-family:'Orbitron',sans-serif;font-weight:900;font-size:34px;color:#00ffff;text-shadow:0 0 12px rgba(0,255,255,.6),0 0 24px rgba(0,255,255,.3);letter-spacing:1px;line-height:1.05}
+  .glitch{color:#ff2079;text-shadow:0 0 12px rgba(255,32,121,.6)}
+  .meta{margin-top:14px;font-family:'Share Tech Mono',monospace;color:#9d9dae;font-size:13px;letter-spacing:1px}
+  .meta span{color:#39ff14}
+  .body{padding:24px 26px 20px}
+  .heading{font-family:'Orbitron',sans-serif;font-size:12px;font-weight:700;color:#ff2079;letter-spacing:4px;text-transform:uppercase;margin-bottom:12px;border-left:3px solid #ff2079;padding-left:10px}
+  .bins{display:flex;flex-direction:column;gap:10px;margin-bottom:18px}
+  .bin{display:flex;align-items:center;gap:14px;padding:10px 12px;background:rgba(0,255,255,.05);border-left:2px solid #00ffff;font-size:17px;font-family:'Share Tech Mono',monospace;color:#e8e8f0;letter-spacing:1px}
+  .bin .icon{font-size:22px}
+  .deadline{margin-top:6px;padding:14px;background:rgba(255,32,121,.08);border:1px dashed #ff2079;text-align:center;font-family:'Orbitron',sans-serif;font-weight:700;font-size:15px;color:#ff2079;letter-spacing:2px;text-transform:uppercase}
+  .deadline .countdown{display:block;color:#39ff14;font-size:22px;margin-top:4px;text-shadow:0 0 8px rgba(57,255,20,.5)}
+  .note{margin-top:12px;padding:10px 14px;background:rgba(255,178,0,.08);border-left:3px solid #ffb200;color:#ffb200;font-size:13px}
+  .foot{padding:10px 26px;background:#05050a;border-top:1px solid #1a1a2e;font-family:'Share Tech Mono',monospace;font-size:11px;color:#4a4a5a;letter-spacing:1px;display:flex;justify-content:space-between}
+  .foot .ver{color:#ff2079}
+</style></head>
+<body><div class="card"><div class="scanlines"></div>
+  <div class="hero">
+    <div class="alert">⚡ FINAL CALL</div>
+    <div class="title">PUT BINS<br><span class="glitch">// OUT NOW</span></div>
+    <div class="meta">> COLLECTION: <span>__HUMAN_DATE__</span> · WEEK_<span>__WEEK__</span></div>
+  </div>
+  <div class="body">
+    <div class="heading">// Payload manifest</div>
+    <div class="bins">__BINS_HTML__</div>
+    <div class="deadline">
+      Deploy before
+      <span class="countdown">07:00 ⟶ MON</span>
+    </div>
+    __NOTE_BLOCK__
+  </div>
+  <div class="foot"><span>207 MARKFIELD RD · LE6 0FT</span><span class="ver">v2.5_cyberpunk</span></div>
+</div></body></html>"""
+
 EMOJI = {
     "Black refuse bin": "⬛",
     "Food waste caddy": "🪣",
@@ -64,13 +108,24 @@ EMOJI = {
     "Blue recycling bin": "♻️",
 }
 
-def render(info, html_path, png_path):
-    bins_html = "<br>".join(f"{EMOJI.get(b,'•')} {b}" for b in info["bins"])
-    note_block = (
-        f'<div style="margin-top:14px;padding:10px 14px;background:#fff8e1;border-left:4px solid #ffa000;color:#7c5e00;font-size:14px">⚠️ {info["note"]}</div>'
-        if info["note"] else ""
-    )
-    html = HTML_TEMPLATE.format(human_date=info["human_date"], week=info["week"], bins_html=bins_html, note_block=note_block)
+def render(info, html_path, png_path, style="standard"):
+    if style == "cyberpunk":
+        bins_html = "".join(f'<div class="bin"><span class="icon">{EMOJI.get(b,"•")}</span>{b.upper()}</div>' for b in info["bins"])
+        note_block = (
+            f'<div class="note">⚠ {info["note"]}</div>' if info["note"] else ""
+        )
+        html = (HTML_TEMPLATE_CYBERPUNK
+                .replace("__HUMAN_DATE__", info["human_date"].upper())
+                .replace("__WEEK__", info["week"])
+                .replace("__BINS_HTML__", bins_html)
+                .replace("__NOTE_BLOCK__", note_block))
+    else:
+        bins_html = "<br>".join(f"{EMOJI.get(b,'•')} {b}" for b in info["bins"])
+        note_block = (
+            f'<div style="margin-top:14px;padding:10px 14px;background:#fff8e1;border-left:4px solid #ffa000;color:#7c5e00;font-size:14px">⚠️ {info["note"]}</div>'
+            if info["note"] else ""
+        )
+        html = HTML_TEMPLATE.format(human_date=info["human_date"], week=info["week"], bins_html=bins_html, note_block=note_block)
     Path(html_path).write_text(html)
 
     async def shot():
@@ -97,10 +152,13 @@ def env(name, required=True):
         raise SystemExit(f"Missing env var: {name}")
     return v
 
-def send_telegram(info, png_path):
+def send_telegram(info, png_path, style="standard"):
     token = env("TELEGRAM_BOT_TOKEN")
     chat = env("TELEGRAM_CHAT_ID")
-    caption = f"🗑️ Bin reminder — {info['human_date']} (Week {info['week']})"
+    if style == "cyberpunk":
+        caption = f"⚡ FINAL CALL // PUT BINS OUT NOW\nCollection: {info['human_date']} (Week {info['week']})\nDeploy before 07:00 MON"
+    else:
+        caption = f"🗑️ Bin reminder — {info['human_date']} (Week {info['week']})"
     if info["note"]:
         caption += f"\n⚠️ {info['note']}"
     with open(png_path, "rb") as f:
@@ -116,18 +174,22 @@ def send_telegram(info, png_path):
         raise RuntimeError(f"Telegram error: {body}")
     return "OK"
 
-def send_emails(info, html_path, png_path):
+def send_emails(info, html_path, png_path, style="standard"):
     sender = env("GMAIL_SENDER")
     pw = env("GMAIL_APP_PASSWORD")
     recipients = [env("EMAIL_CEZARY"), env("EMAIL_SUNIA")]
     html = Path(html_path).read_text()
     img_data = Path(png_path).read_bytes()
     results = {}
+    if style == "cyberpunk":
+        subject = f"⚡ FINAL CALL — PUT BINS OUT NOW ({info['human_date']})"
+    else:
+        subject = f"🗑️ Bin reminder — {info['human_date']} (Week {info['week']})"
     for to in recipients:
         msg = MIMEMultipart("related")
         msg["From"] = f"Bin Reminder Bot <{sender}>"
         msg["To"] = to
-        msg["Subject"] = f"🗑️ Bin reminder — {info['human_date']} (Week {info['week']})"
+        msg["Subject"] = subject
         alt = MIMEMultipart("alternative")
         alt.attach(MIMEText(f"Bin collection: {info['human_date']} (Week {info['week']}).", "plain"))
         alt.attach(MIMEText(html, "html"))
@@ -148,20 +210,26 @@ def send_emails(info, html_path, png_path):
 
 # --- 4. Main ---
 def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--style", choices=["standard","cyberpunk"], default="standard")
+    args = ap.parse_args()
+    style = args.style
+    print(f"Style: {style}")
+
     info = next_collection()
     print(f"Next collection: {json.dumps(info, indent=2)}")
 
     html_path = "/tmp/bin_reminder.html"
     png_path = "/tmp/bin_reminder.png"
-    render(info, html_path, png_path)
+    render(info, html_path, png_path, style=style)
     print(f"Rendered PNG ({os.path.getsize(png_path)} bytes)")
 
     results = {}
     try:
-        results["telegram"] = send_telegram(info, png_path)
+        results["telegram"] = send_telegram(info, png_path, style=style)
     except Exception as e:
         results["telegram"] = f"FAIL: {e}"
-    results["email"] = send_emails(info, html_path, png_path)
+    results["email"] = send_emails(info, html_path, png_path, style=style)
 
     print("\n=== Results ===")
     print(json.dumps(results, indent=2))

@@ -1,0 +1,60 @@
+name: Sunday Bin Final Reminder (21:00)
+
+on:
+  schedule:
+    # 21:00 Europe/London:
+    #   20:00 UTC during BST (Mar-Oct)
+    #   21:00 UTC during GMT (Nov-Feb)
+    - cron: '0 20 * * 0'
+    - cron: '0 21 * * 0'
+  workflow_dispatch:
+    inputs:
+      force:
+        description: 'Bypass the 21:00 Europe/London time check'
+        required: false
+        default: 'false'
+
+jobs:
+  remind:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check local time is 21:00 Europe/London Sunday (skip if not, unless forced)
+        run: |
+          if [[ "${{ github.event.inputs.force }}" == "true" ]]; then
+            echo "Force flag set — running regardless of local time"
+            exit 0
+          fi
+          LOCAL_DOW=$(TZ=Europe/London date '+%u')
+          HOUR=$(TZ=Europe/London date '+%H')
+          MIN=$(TZ=Europe/London date '+%M')
+          echo "Europe/London: dow=$LOCAL_DOW hour=$HOUR min=$MIN"
+          if [[ "$LOCAL_DOW" != "7" ]]; then echo "Not Sunday — exit"; exit 1; fi
+          if [[ "$HOUR" != "21" ]] || [[ "$MIN" -lt 0 ]] || [[ "$MIN" -gt 15 ]]; then
+            echo "Outside 21:00-21:15 window — exit"
+            exit 1
+          fi
+
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install deps
+        run: pip install --quiet playwright requests && python -m playwright install --with-deps chromium
+      - name: Run cyberpunk final reminder
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID:   ${{ secrets.TELEGRAM_CHAT_ID }}
+          GMAIL_SENDER:       ${{ secrets.GMAIL_SENDER }}
+          GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
+          EMAIL_CEZARY:       ${{ secrets.EMAIL_CEZARY }}
+          EMAIL_SUNIA:        ${{ secrets.EMAIL_SUNIA }}
+        run: python scripts/run_reminder.py --style cyberpunk
+
+      - name: Upload artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: bin-reminder-cyberpunk-png
+          path: /tmp/bin_reminder.png
+          if-no-files-found: ignore

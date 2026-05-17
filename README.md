@@ -1,12 +1,19 @@
-# 🗑️ Bin Collection Reminder — v2.4
+# 🗑️ Bin Collection Reminder — v2.5
 
 Automated weekly bin collection reminder for **207 Markfield Road, Groby, Leicester LE6 0FT**.
 
-Runs as a **GitHub Actions workflow** every Sunday at 19:30 Europe/London. Sends to:
+Runs as **two GitHub Actions workflows** every Sunday:
+
+| Time | Workflow | Style | Tone |
+|---|---|---|---|
+| **19:30** | `sunday-reminder.yml` | Light green card | "Tomorrow is bin day, here's what" |
+| **21:00** | `sunday-final-reminder.yml` | 🌃 Cyberpunk dark | "FINAL CALL // PUT BINS OUT NOW" |
+
+Both go to the same channels:
 
 | Channel | Recipients | Mechanism |
 |---|---|---|
-| 📱 Telegram | Cezary | `api.telegram.org/sendPhoto` |
+| 📱 Telegram | Cezary (@GrobyBinbot) | `api.telegram.org/sendPhoto` |
 | 📧 Email | Cezary + Sunia | Gmail SMTP via App Password |
 
 WhatsApp delivery was attempted via Green API but Meta has blocked all free third-party multi-device APIs as of 2026 — sends returned fake `idMessage` OK responses while messages were silently dropped. Sunia receives the reminder via email (same content, same image inline). Cezary receives Telegram + email.
@@ -70,6 +77,12 @@ Either:
 - CLI: `gh workflow run sunday-reminder.yml -f force=true`
 
 ## Changelog
+
+### v2.5 — 2026-05-17 (21:00 cyberpunk final reminder)
+- 🌃 Second workflow `sunday-final-reminder.yml` fires at Sun 21:00 Europe/London
+- 🎨 New cyberpunk dark-theme image template: black background, neon pink + cyan, Orbitron + Share Tech Mono fonts, scanlines, clipped corners, "PUT BINS OUT NOW" messaging
+- 🛠 `scripts/run_reminder.py` now takes `--style standard|cyberpunk`. Workflow at 19:30 uses standard; 21:00 uses cyberpunk
+- 📦 Both workflows reuse the same 6 secrets — no new secrets needed
 
 ### v2.4 — 2026-05-17 (dedicated bot)
 - 🤖 Switched Telegram delivery from `@ScopeFinderSEO_bot` (Cezary's SEO bot — wrong purpose) to dedicated `@GrobyBinbot` (id 8912420562)
