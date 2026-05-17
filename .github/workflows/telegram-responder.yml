@@ -1,0 +1,25 @@
+name: Telegram Responder
+
+on:
+  schedule:
+    - cron: '*/5 * * * *'    # every 5 minutes
+  workflow_dispatch:
+
+# Prevent overlap: if a previous run is still going, queue this one
+concurrency:
+  group: telegram-responder
+  cancel-in-progress: false
+
+jobs:
+  respond:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Poll Telegram for commands
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+        run: python scripts/respond_telegram.py
