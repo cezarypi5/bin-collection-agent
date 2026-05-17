@@ -1,0 +1,76 @@
+# Bin Bot Responder — Telegram + WhatsApp (Green API)
+
+**Version:** 2.0
+**Schedule:** Every 5 minutes (cron `*/5 * * * *`, timezone `Europe/London`)
+
+Polls Telegram and WhatsApp for incoming bin-related questions and replies with the schedule from `bin_schedule.json`.
+
+## Inputs the prompt MUST load at the start of every run
+1. `telegram_config.json`
+2. `bin_schedule.json`
+3. `state/last_update_id.json` — persistent Telegram offset (see below). Create if missing.
+
+## State persistence — CRITICAL
+The Telegram update offset MUST be persisted to a workspace file, NOT browser `localStorage`.
+
+```
+state/
+  last_update_id.json   # { "last_update_id": 12345 }
+```
+
+`localStorage` is per-Chrome-tab and is wiped between scheduled-task runs. Use the workspace file.
+
+## Step 1: One-time setup (only on first run)
+Call `getWebhookInfo`. If `result.url` is non-empty, call `deleteWebhook` — otherwise `getUpdates` will return 409 Conflict.
+
+```bash
+curl -s "https://api.telegram.org/bot$BOT_TOKEN/getWebhookInfo"
+# if url present:
+curl -s "https://api.telegram.org/bot$BOT_TOKEN/deleteWebhook"
+```
+
+## Step 2: Poll Telegram (bash sandbox + curl, NOT Chrome MCP)
+```bash
+OFFSET=$(jq -r '.last_update_id // 0' state/last_update_id.json) + 1
+curl -s "https://api.telegram.org/bot$BOT_TOKEN/getUpdates?offset=$OFFSET&timeout=0"
+```
+
+For each update in the response:
+1. If text matches any trigger keyword (case-insensitive): bin, collection, recycling, refuse, rubbish, caddy, garden, waste, when, next, monday, week, tomorrow
+2. Look up the next collection in `bin_schedule.json` (same logic as reminder prompt)
+3. `sendMessage` with a friendly reply
+4. Track the highest `update_id` seen
+
+After the loop, write the highest `update_id` to `state/last_update_id.json`.
+
+## Step 3: Drain Green API queue — LOOP until empty
+```
+loop:
+  resp = POST {green_api.url}/waInstance{instance}/receiveNotification/{token}
+  if resp is null or empty body: break
+  process the message (same keyword + lookup logic)
+  if matched: send reply via sendMessage
+  ALWAYS: delete the notification via deleteNotification/{receiptId}
+end loop
+```
+
+> The earlier version stopped after 5 messages. That caused queue back-up under any burst. Loop until `receiveNotification` returns null.
+
+If `getStateInstance` returns anything other than `authorized`, skip Green API entirely and log a warning.
+
+## Step 4: Reply format
+Plain text, one message:
+```
+Next collection: Mon 18 May 2026 (Week B)
+Put out: 🪣 Food waste caddy, 🟤 Brown garden bin, ♻️ Blue recycling bin
+(by 07:00)
+```
+If the next collection has a `note` (e.g. deferred for bank holiday), add it on a new line.
+
+## Step 5: De-dup
+Each message must be replied to at most once. If you've already updated `last_update_id` past a Telegram update, do NOT reply again. For Green API, the `deleteNotification` call (always issued) prevents re-delivery.
+
+## Failure handling
+- 401 from Telegram → token revoked, email Cezary
+- 409 from Telegram → webhook is set; auto-call `deleteWebhook` once and retry once
+- Green API `notAuthorized` state → log + skip + email Cezary daily (rate-limited)
